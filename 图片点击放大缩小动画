@@ -10,6 +10,7 @@ image.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     Intent intent = new Intent(XXX.this, ImageActivity.class);
+                    //获取原图片在屏幕上的坐标，用来动画起始和结束的位置
                     int[] screenLocation = new int[2];
                     image.getLocationOnScreen(screenLocation);
                     intent.putExtra("left", screenLocation[0])
