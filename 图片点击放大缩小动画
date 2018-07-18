@@ -1,0 +1,160 @@
+
+
+
+
+//仿微信点击图片放大和缩小以及动画  
+//实现方式 通过打开一个activity来实现
+
+1，
+image.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(XXX.this, ImageActivity.class);
+                    int[] screenLocation = new int[2];
+                    image.getLocationOnScreen(screenLocation);
+                    intent.putExtra("left", screenLocation[0])
+                            .putExtra("top", screenLocation[1])
+                            .putExtra("width", image.getWidth())
+                            .putExtra("height", image.getHeight())
+                            .putExtra("image", image.url);
+
+                    startActivity(intent);
+                    //取消activity动画
+                    overridePendingTransition(0, 0);
+                }
+            });
+
+2,
+
+public class ImageActivity extends BaseActivity {
+
+    private ImageView imageView;
+
+    private int mLeftDelta;
+    private int mTopDelta;
+    private float mWidthScale;
+    private float mHeightScale;
+
+    private ColorDrawable colorDrawable;
+
+    private int intentTop;
+    private int intentLeft;
+    private int intentWidth;
+    private int intentHeight;
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_image);
+        Bundle bundle = getIntent().getExtras();
+        intentTop = bundle.getInt("top");
+        intentLeft = bundle.getInt("left");
+        intentWidth = bundle.getInt("width");
+        intentHeight = bundle.getInt("height");
+        String image = bundle.getString("image");
+
+        colorDrawable = new ColorDrawable(Color.BLACK);
+        imageView = findViewById(R.id.imageView);
+        RelativeLayout relativeLayout = findViewById(R.id.relativeLayout);
+        relativeLayout.setBackgroundDrawable(colorDrawable);
+        Glide.with(this).load(image).error(R.drawable.default_head).placeholder(R
+                .drawable.default_head).into(imageView);
+        if (savedInstanceState == null) {
+            ViewTreeObserver observer = imageView.getViewTreeObserver();
+            observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+                @Override
+                public boolean onPreDraw() {
+                    imageView.getViewTreeObserver().removeOnPreDrawListener(this);
+                    //坐标的获取设置
+                    int[] screenLocation = new int[2];
+                    imageView.getLocationOnScreen(screenLocation);
+                    mLeftDelta = intentLeft - screenLocation[0];
+                    mTopDelta = intentTop - screenLocation[1];
+
+                    mWidthScale = (float) intentWidth / imageView.getWidth();
+                    mHeightScale = (float) intentHeight / imageView.getHeight();
+                    //开启缩放动画
+                    enterAnimation();
+
+                    return true;
+                }
+            });
+        }
+
+        imageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                exitAnimation(new Runnable() {
+                    public void run() {
+                        finish();
+                        //取消activity动画
+                        overridePendingTransition(0, 0);
+                    }
+                });
+            }
+        });
+    }
+
+    @Override
+    public void onBackPressed() {
+        exitAnimation(new Runnable() {
+            public void run() {
+                finish();
+                //取消activity动画
+                overridePendingTransition(0, 0);
+            }
+        });
+    }
+
+    //进入动画
+    public void enterAnimation() {
+        //设置imageview动画的初始值
+        imageView.setPivotX(0);
+        imageView.setPivotY(0);
+        imageView.setScaleX(mWidthScale);
+        imageView.setScaleY(mHeightScale);
+        imageView.setTranslationX(intentLeft);
+        imageView.setTranslationY(intentTop);
+        //设置动画
+        TimeInterpolator sDecelerator = new DecelerateInterpolator();
+        //设置imageview缩放动画，以及缩放开始位置
+        imageView.animate().setDuration(500).scaleX(1).scaleY(1).
+                translationX(0).translationY(0).setInterpolator(sDecelerator);
+
+        // 设置activity主布局背景颜色DURATION毫秒内透明度从透明到不透明
+        ObjectAnimator bgAnim = ObjectAnimator.ofInt(colorDrawable, "alpha", 0, 255);
+        bgAnim.setDuration(500);
+        bgAnim.start();
+    }
+
+    public void exitAnimation(final Runnable endAction) {
+
+        TimeInterpolator sInterpolator = new AccelerateInterpolator();
+        //设置imageview缩放动画，以及缩放结束位置
+        imageView.animate().setDuration(500).scaleX(mWidthScale).scaleY(mHeightScale).
+                translationX(intentLeft).translationY(intentTop)
+                .setInterpolator(sInterpolator).withEndAction(endAction);
+
+        // 设置activity主布局背景颜色DURATION毫秒内透明度从不透明到透明
+        ObjectAnimator bgAnim = ObjectAnimator.ofInt(colorDrawable, "alpha", 0);
+        bgAnim.setDuration(500);
+        bgAnim.start();
+    }
+}
+
+3，
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/relativeLayout"
+    android:orientation="vertical">
+
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true" />
+
+</RelativeLayout>
